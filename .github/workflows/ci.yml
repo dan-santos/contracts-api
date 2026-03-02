@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build and test with Docker Compose
+        run: |
+          docker compose up -d --build --wait
+          
+      - name: Run tests
+        run: |
+          docker compose exec -T app pytest -v --color=yes
+          
+      - name: Check application health
+        run: |
+          curl --fail http://localhost:8000/healthcheck
+          curl --fail http://localhost:8000/version
+          
+      - name: Show logs on failure
+        if: failure()
+        run: |
+          docker compose logs app
+          
+      - name: Cleanup
+        if: always()
+        run: |
+          docker compose down -v
